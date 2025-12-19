@@ -88,3 +88,13 @@ VSC_A100_48H = SlurmConfig(time="2-00:00", mem="64G", cpus=16, gpu="a100", n_gpu
 VSC_2_A100_12H = SlurmConfig(time="0-12:00", mem="64G", cpus=16, gpu="a100", n_gpu=2)
 VSC_2_A100_24H = SlurmConfig(time="1-00:00", mem="128G", cpus=32, gpu="a100", n_gpu=2)
 VSC_4_A100_24H = SlurmConfig(time="1-00:00", mem="256G", cpus=64, gpu="a100", n_gpu=4)
+
+# VSC CPU-only configurations (no GPU)
+VSC_CPU_15MIN = SlurmConfig(time="0-00:15", mem="4G", cpus=2, gpu=False)
+VSC_CPU_30MIN = SlurmConfig(time="0-00:30", mem="8G", cpus=4, gpu=False)
+VSC_CPU_1H = SlurmConfig(time="0-01:00", mem="8G", cpus=4, gpu=False)
+VSC_CPU_2H = SlurmConfig(time="0-02:00", mem="16G", cpus=8, gpu=False)
+VSC_CPU_4H = SlurmConfig(time="0-04:00", mem="16G", cpus=8, gpu=False)
+VSC_CPU_8H = SlurmConfig(time="0-08:00", mem="32G", cpus=16, gpu=False)
+VSC_CPU_12H = SlurmConfig(time="0-12:00", mem="32G", cpus=16, gpu=False)
+VSC_CPU_24H = SlurmConfig(time="1-00:00", mem="64G", cpus=32, gpu=False)
