@@ -15,6 +15,8 @@ ENV_VAR_WANDB_MODE = "OPTEXP_WANDB_MODE"
 ENV_VAR_WANDB_API_KEY = "WANDB_API_KEY"
 ENV_VAR_SLURM_EMAIL = "OPTEXP_SLURM_NOTIFICATION_EMAIL"
 ENV_VAR_SLURM_ACCOUNT = "OPTEXP_SLURM_ACCOUNT"
+ENV_VAR_SLURM_CLUSTER = "OPTEXP_SLURM_CLUSTER"
+ENV_VAR_SLURM_PARTITION = "OPTEXP_SLURM_PARTITION"
 LOG_FMT = "%(asctime)s %(levelname)s [%(filename)s:%(lineno)d] %(message)s"
 
 
@@ -178,6 +180,26 @@ def get_slurm_account() -> str:
             "Slurm Account not set. " f"Define the {account} environment variable."
         )
     return account
+
+
+def get_slurm_cluster() -> Optional[str]:
+    """
+    Optional cluster specification for Slurm (e.g., 'wice' for VSC).
+
+    Returns:
+        Cluster name if set, None otherwise.
+    """
+    return os.environ.get(ENV_VAR_SLURM_CLUSTER, None)
+
+
+def get_slurm_partition() -> Optional[str]:
+    """
+    Optional partition specification for Slurm (e.g., 'gpu' for VSC).
+
+    Returns:
+        Partition name if set, None otherwise.
+    """
+    return os.environ.get(ENV_VAR_SLURM_PARTITION, None)
 
 
 def get_logger(name: Optional[str] = None, level: Optional[str | int] = None) -> Logger:

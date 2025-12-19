@@ -29,6 +29,18 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
 
     bangline = "#!/bin/sh\n"
 
+    # Optional cluster and partition settings (for VSC)
+    cluster_str = ""
+    partition_str = ""
+    if hasattr(config, 'get_slurm_cluster'):
+        cluster = config.get_slurm_cluster()
+        if cluster:
+            cluster_str = f"#SBATCH --cluster={cluster}"
+    if hasattr(config, 'get_slurm_partition'):
+        partition = config.get_slurm_partition()
+        if partition:
+            partition_str = f"#SBATCH --partition={partition}"
+
     formatted_header = textwrap.dedent(
         """
         #SBATCH --account={acc}
@@ -38,6 +50,8 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
         #SBATCH --mail-user={email}
         #SBATCH --mail-type=ALL
         #SBATCH --array=0-{last_job_idx}
+        {cluster_str}
+        {partition_str}
         {gpu_str}
 
         """
@@ -47,6 +61,8 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
         time=slurm_config.time,
         cpus=slurm_config.cpus,
         email=config.get_slurm_email(),
+        cluster_str=cluster_str,
+        partition_str=partition_str,
         gpu_str=gpu_str,
         last_job_idx=n_jobs - 1,
     )
