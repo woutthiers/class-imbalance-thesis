@@ -184,6 +184,37 @@ def adaptive_sign_step(
     dampening: float,
 ):
     """
+    Functional API for adaptive sign optimizer step.
+    
+    Implements: x_{i,k+1} = x_{i,k} - gamma * d_i / (eps + |d_i|)
+    where d_i is the gradient (or momentum buffer if momentum > 0).
+    """
+    for i, param in enumerate(params):
+        grad = grads[i]
+        
+        # Apply weight decay if needed
+        if weight_decay != 0:
+            grad = grad.add(param, alpha=weight_decay)
+
+        # Apply momentum if needed
+        if momentum != 0:
+            buf = momentum_buffer_list[i]
+
+            if buf is None:
+                buf = torch.clone(grad).detach()
+                momentum_buffer_list[i] = buf
+            else:
+                buf.mul_(momentum).add_(grad, alpha=1 - dampening)
+
+            d_p = buf
+        else:
+            d_p = grad
+
+        # Apply adaptive sign normalization: d_i / (eps + |d_i|)
+        normalized_direction = d_p / (eps + torch.abs(d_p))
+        
+        # Update parameters
+        param.add_(normalized_direction, alpha=-lr)
 
 
 class AdaptiveSignNormFirstOptimizer(TorchOptimizer):
@@ -316,34 +347,3 @@ def adaptive_sign_norm_first_step(
 
         # Update parameters
         param.add_(update, alpha=-lr)
-    Functional API for adaptive sign optimizer step.
-    
-    Implements: x_{i,k+1} = x_{i,k} - gamma * d_i / (eps + |d_i|)
-    where d_i is the gradient (or momentum buffer if momentum > 0).
-    """
-    for i, param in enumerate(params):
-        grad = grads[i]
-        
-        # Apply weight decay if needed
-        if weight_decay != 0:
-            grad = grad.add(param, alpha=weight_decay)
-
-        # Apply momentum if needed
-        if momentum != 0:
-            buf = momentum_buffer_list[i]
-
-            if buf is None:
-                buf = torch.clone(grad).detach()
-                momentum_buffer_list[i] = buf
-            else:
-                buf.mul_(momentum).add_(grad, alpha=1 - dampening)
-
-            d_p = buf
-        else:
-            d_p = grad
-
-        # Apply adaptive sign normalization: d_i / (eps + |d_i|)
-        normalized_direction = d_p / (eps + torch.abs(d_p))
-        
-        # Update parameters
-        param.add_(normalized_direction, alpha=-lr)
