@@ -20,41 +20,7 @@ from optexp.problems.utils import Accuracy
 class AccuracyMajorityMinority(nn.Module):
     """Compute accuracy separately for majority and minority classes.
     
-    Args:
-        num_majority_classes: Number of majority/common classes (e.g., 10)
-    """
-    def __init__(self, num_majority_classes: int = 10) -> None:
-        super().__init__()
-        self.num_majority_classes = num_majority_classes
-
-    def forward(self, inputs, labels):
-        """Returns dict with 'majority_acc' and 'minority_acc'."""
-        classes = torch.argmax(inputs, dim=1)
-        correct = (classes == labels).float()
-        
-        # Separate majority and minority samples
-        majority_mask = labels < self.num_majority_classes
-        minority_mask = labels >= self.num_majority_classes
-        
-        result = {}
-        
-        # Majority accuracy
-        if majority_mask.any():
-            result['majority_acc'] = correct[majority_mask].mean().item()
-        else:
-            result['majority_acc'] = 0.0
-        
-        # Minority accuracy
-        if minority_mask.any():
-            result['minority_acc'] = correct[minority_mask].mean().item()
-        else:
-            result['minority_acc'] = 0.0
-        
-        return result
-
-
-class CrossEntropyLossMajorityMinority(nn.Module):
-    """Compute cross-entropy loss separately for majority and minority classes.
+    Returns a tuple of tensors for compatibility with the framework.
     
     Args:
         num_majority_classes: Number of majority/common classes (e.g., 10)
@@ -62,30 +28,70 @@ class CrossEntropyLossMajorityMinority(nn.Module):
     def __init__(self, num_majority_classes: int = 10) -> None:
         super().__init__()
         self.num_majority_classes = num_majority_classes
+        self.__name__ = "AccuracyMajorityMinority"
+
+    def __str__(self):
+        return "AccuracyMajorityMinority()"
 
     def forward(self, inputs, labels):
-        """Returns dict with 'majority_loss' and 'minority_loss'."""
+        """Returns tuple of (values, counts) for majority and minority accuracy."""
+        classes = torch.argmax(inputs, dim=1)
+        correct = (classes == labels).float()
+        
+        # Separate majority and minority samples
+        majority_mask = labels < self.num_majority_classes
+        minority_mask = labels >= self.num_majority_classes
+        
+        # Compute accuracies and counts
+        majority_correct = correct[majority_mask].sum() if majority_mask.any() else torch.tensor(0.0, device=inputs.device)
+        majority_count = majority_mask.sum().float() if majority_mask.any() else torch.tensor(1.0, device=inputs.device)
+        
+        minority_correct = correct[minority_mask].sum() if minority_mask.any() else torch.tensor(0.0, device=inputs.device)
+        minority_count = minority_mask.sum().float() if minority_mask.any() else torch.tensor(1.0, device=inputs.device)
+        
+        # Stack into tensors: [majority_acc, minority_acc]
+        values = torch.stack([majority_correct, minority_correct])
+        counts = torch.stack([majority_count, minority_count])
+        
+        return values, counts
+
+
+class CrossEntropyLossMajorityMinority(nn.Module):
+    """Compute cross-entropy loss separately for majority and minority classes.
+    
+    Returns a tuple of tensors for compatibility with the framework.
+    
+    Args:
+        num_majority_classes: Number of majority/common classes (e.g., 10)
+    """
+    def __init__(self, num_majority_classes: int = 10) -> None:
+        super().__init__()
+        self.num_majority_classes = num_majority_classes
+        self.__name__ = "CrossEntropyLossMajorityMinority"
+
+    def __str__(self):
+        return "CrossEntropyLossMajorityMinority()"
+
+    def forward(self, inputs, labels):
+        """Returns tuple of (values, counts) for majority and minority loss."""
         losses = cross_entropy(inputs, labels, reduction="none")
         
         # Separate majority and minority samples
         majority_mask = labels < self.num_majority_classes
         minority_mask = labels >= self.num_majority_classes
         
-        result = {}
+        # Compute losses and counts
+        majority_loss = losses[majority_mask].sum() if majority_mask.any() else torch.tensor(0.0, device=inputs.device)
+        majority_count = majority_mask.sum().float() if majority_mask.any() else torch.tensor(1.0, device=inputs.device)
         
-        # Majority loss
-        if majority_mask.any():
-            result['majority_loss'] = losses[majority_mask].mean().item()
-        else:
-            result['majority_loss'] = 0.0
+        minority_loss = losses[minority_mask].sum() if minority_mask.any() else torch.tensor(0.0, device=inputs.device)
+        minority_count = minority_mask.sum().float() if minority_mask.any() else torch.tensor(1.0, device=inputs.device)
         
-        # Minority loss
-        if minority_mask.any():
-            result['minority_loss'] = losses[minority_mask].mean().item()
-        else:
-            result['minority_loss'] = 0.0
+        # Stack into tensors: [majority_loss, minority_loss]
+        values = torch.stack([majority_loss, minority_loss])
+        counts = torch.stack([majority_count, minority_count])
         
-        return result
+        return values, counts
 
 
 class ClassificationWithMajorityMinorityStats(Classification):
