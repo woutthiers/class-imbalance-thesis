@@ -305,7 +305,7 @@ class ImbalancedMNISTWithBarcodes(Dataset):
                 common_samples_per_class_val=1000,
                 rare_samples_per_class_tr=5,
                 rare_samples_per_class_val=1,
-                num_rare_classes=10240,
+                num_rare_classes=10230,  # 1023 barcodes × 10 digits (10 bits allows max 1023 barcodes)
             ),
             self.batch_size,
             config.get_device(),
