@@ -6,6 +6,10 @@ from optexp.problems.classification import (
     FullBatchSquaredLossClassification,
     ClassificationWithPerClassStats,
 )
+from optexp.problems.imbalanced_classification import (
+    ClassificationWithMajorityMinorityStats,
+    FullBatchClassificationWithMajorityMinorityStats,
+)
 from optexp.problems.regression import Regression, FullBatchRegression
 from optexp.problems.transformer import Transformer, FullBatchTransformer
 from optexp.problems.utils import DivergingException

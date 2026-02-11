@@ -2,6 +2,13 @@ from optexp.optimizers.learning_rate import LearningRate
 from optexp.optimizers.Adam import Adam, Adam_M, Adam_NM
 from optexp.optimizers.AdamW import AdamW
 from optexp.optimizers.AdaGrad import Adagrad
+from optexp.optimizers.AdaptiveSign import (
+    AdaptiveSign,
+    AdaptiveSign_M,
+    AdaptiveSign_NM,
+    AdaptiveSignNormFirst,
+    AdaptiveSignNormFirst_M,
+)
 from optexp.optimizers.normalized_opts import (
     NormSGD,
     NormSGD_M,

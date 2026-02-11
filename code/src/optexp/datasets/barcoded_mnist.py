@@ -138,6 +138,138 @@ def make_barcoded_mnist(
     return X_tr, y_tr, X_va, y_va
 
 
+def make_imbalanced_mnist_with_barcodes(
+    corners=CORNERS_10,
+    common_samples_per_class_tr: int = 5000,
+    common_samples_per_class_val: int = 1000,
+    rare_samples_per_class_tr: int = 5,
+    rare_samples_per_class_val: int = 1,
+    num_rare_classes: int = 10240,
+    normalize: bool = True,
+):
+    """Creates an imbalanced dataset with common MNIST classes and rare barcoded classes.
+    
+    Creates a realistic class-imbalanced scenario:
+    - 10 common classes (original MNIST digits) with ~5000 training samples each
+    - ~10,000 rare classes (barcoded variants) with 5 training samples each
+    
+    Args:
+        corners: Barcode positions (default: CORNERS_10 for 2^10 = 1024 barcodes)
+        common_samples_per_class_tr: Samples per common class for training (default: 5000)
+        common_samples_per_class_val: Samples per common class for validation (default: 1000)
+        rare_samples_per_class_tr: Samples per rare class for training (default: 5)
+        rare_samples_per_class_val: Samples per rare class for validation (default: 1)
+        num_rare_classes: Number of rare barcoded classes (default: 10240 = 1024 barcodes × 10 digits)
+        normalize: Whether to normalize the data
+    
+    Returns:
+        X_tr, y_tr, X_va, y_va tensors
+    
+    Example configuration (default):
+        - Common classes: 10 classes × 5000 samples = 50,000 training samples
+        - Rare classes: 10,240 classes × 5 samples = 51,200 training samples
+        - Total: 10,250 classes, 101,200 training samples
+    """
+    mnist_x_tr, mnist_y_tr, mnist_x_va, mnist_y_va = load_split_mnist()
+    digits = np.unique(mnist_y_tr)
+    max_value = mnist_x_tr.max()
+    
+    # Calculate how many barcodes we need: num_rare_classes / 10 digits
+    num_barcodes = num_rare_classes // len(digits)
+    
+    # Generate enough binary combinations for the barcodes
+    n_bits = len(corners)
+    total_possible_barcodes = 2**n_bits - 1  # -1 because we skip all-zeros
+    if num_barcodes > total_possible_barcodes:
+        raise ValueError(f"Cannot create {num_barcodes} barcodes with {n_bits} bits. "
+                        f"Maximum is {total_possible_barcodes}. Use more corners or fewer rare classes.")
+    
+    # Select first num_barcodes from all possible combinations
+    all_barcodes = list(product([0, 1], repeat=n_bits))
+    all_barcodes = all_barcodes[1:num_barcodes+1]  # Skip all-zeros, take num_barcodes
+    
+    assert len(np.unique(mnist_y_tr)) == 10
+    assert len(np.unique(mnist_y_va)) == 10
+
+    def apply_barcode(barcode, x):
+        img = np.copy(x)
+        for binary, corner in zip(barcode, corners):
+            if binary == 1:
+                img[corner[0]][corner[1]] = max_value
+        return img
+
+    def make_new_random_image(candidates, barcode):
+        i = np.random.randint(len(candidates))
+        return apply_barcode(barcode, candidates[i])
+
+    # PART 1: Common classes (original MNIST, 10 classes)
+    xs_tr_common = []
+    ys_tr_common = []
+    xs_va_common = []
+    ys_va_common = []
+    
+    for digit in digits:
+        digit_samples_tr = mnist_x_tr[mnist_y_tr == digit]
+        digit_samples_va = mnist_x_va[mnist_y_va == digit]
+        
+        # Sample with replacement if needed
+        n_train = min(common_samples_per_class_tr, len(digit_samples_tr))
+        n_val = min(common_samples_per_class_val, len(digit_samples_va))
+        
+        train_indices = np.random.choice(len(digit_samples_tr), n_train, replace=(n_train > len(digit_samples_tr)))
+        val_indices = np.random.choice(len(digit_samples_va), n_val, replace=(n_val > len(digit_samples_va)))
+        
+        xs_tr_common.extend(digit_samples_tr[train_indices])
+        ys_tr_common.extend([digit] * n_train)
+        xs_va_common.extend(digit_samples_va[val_indices])
+        ys_va_common.extend([digit] * n_val)
+    
+    # PART 2: Rare classes (barcoded MNIST, ~10k classes)
+    xs_tr_rare = []
+    ys_tr_rare = []
+    xs_va_rare = []
+    ys_va_rare = []
+    
+    class_idx = 10  # Start rare classes after the 10 common classes
+    
+    for barcode in all_barcodes:
+        for digit in digits:
+            digit_samples_tr = mnist_x_tr[mnist_y_tr == digit]
+            digit_samples_va = mnist_x_va[mnist_y_va == digit]
+            
+            for j in range(rare_samples_per_class_tr):
+                xs_tr_rare.append(make_new_random_image(digit_samples_tr, barcode))
+                ys_tr_rare.append(class_idx)
+            
+            for j in range(rare_samples_per_class_val):
+                xs_va_rare.append(make_new_random_image(digit_samples_va, barcode))
+                ys_va_rare.append(class_idx)
+            
+            class_idx += 1
+
+    # Combine common and rare classes
+    X_tr: Tensor = torch.from_numpy(np.array(xs_tr_common + xs_tr_rare)).to(torch.float32)
+    y_tr: Tensor = torch.from_numpy(np.array(ys_tr_common + ys_tr_rare)).to(torch.long)
+    X_va: Tensor = torch.from_numpy(np.array(xs_va_common + xs_va_rare)).to(torch.float32)
+    y_va: Tensor = torch.from_numpy(np.array(ys_va_common + ys_va_rare)).to(torch.long)
+
+    if normalize:
+        def safe_normalize(to_normalize, means, stds):
+            to_normalize[:, stds > 0] = to_normalize[:, stds > 0] - means[stds > 0]
+            to_normalize[:, stds > 0] = to_normalize[:, stds > 0] / stds[stds > 0]
+            return to_normalize
+
+        means = X_tr.mean(dim=0)
+        stds = X_tr.std(dim=0)
+        X_tr = safe_normalize(X_tr, means, stds)
+        X_va = safe_normalize(X_va, means, stds)
+
+    X_tr = X_tr.unsqueeze(1)
+    X_va = X_va.unsqueeze(1)
+
+    return X_tr, y_tr, X_va, y_va
+
+
 def make_batch_loader(tr_x, tr_y, va_x, va_y, batch_size, device):
     tr_x = tr_x.to(device)
     tr_y = tr_y.to(device)
@@ -149,6 +281,35 @@ def make_batch_loader(tr_x, tr_y, va_x, va_y, batch_size, device):
     train_data = BatchLoader(tr_x, tr_y, batch_size)
     val_data = BatchLoader(va_x, va_y, batch_size)
     return train_data, val_data, input_shape, output_shape, torch.bincount(tr_y)
+
+
+@dataclass(frozen=True)
+class ImbalancedMNISTWithBarcodes(Dataset):
+    """Realistic imbalanced dataset with common MNIST classes and rare barcoded classes.
+    
+    - 10 common classes (original MNIST) with ~5000 training samples each (50k total)
+    - ~10,240 rare classes (barcoded MNIST) with 5 training samples each (~51k total)
+    - Total: ~10,250 classes, ~101k training samples
+    """
+    imbalance: bool = True
+
+    def __post_init__(self):
+        if not self.imbalance:
+            raise ValueError("ImbalancedMNISTWithBarcodes should always be imbalanced")
+
+    def load(self):
+        return make_batch_loader(
+            *make_imbalanced_mnist_with_barcodes(
+                corners=CORNERS_10,
+                common_samples_per_class_tr=5000,
+                common_samples_per_class_val=1000,
+                rare_samples_per_class_tr=5,
+                rare_samples_per_class_val=1,
+                num_rare_classes=10240,
+            ),
+            self.batch_size,
+            config.get_device(),
+        )
 
 
 @dataclass(frozen=True)
