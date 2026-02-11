@@ -33,7 +33,7 @@ def generate_combinations(n: int):
     return combinations[1:]
 
 
-def load_split_mnist(download=False):
+def load_split_mnist(download=True):
     train_set = MNIST(
         root=config.get_dataset_directory(), train=True, download=download
     )
