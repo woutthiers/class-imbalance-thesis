@@ -134,7 +134,7 @@ group = "AdaptiveSign_ImbalancedMNIST_CNN"
 experiments = []
 for batch_size in BATCH_SIZES:
     # Create dataset with specific batch size
-    dataset = ImbalancedMNISTWithBarcodes(batch_size=batch_size)
+    dataset = ImbalancedMNISTWithBarcodes(name="ImbalancedMNIST", batch_size=batch_size)
     model = SimpleMNISTCNN()
     # Use grouped metrics: tracks performance on 10 majority classes vs 10,240 minority classes
     problem = FullBatchClassificationWithMajorityMinorityStats(
