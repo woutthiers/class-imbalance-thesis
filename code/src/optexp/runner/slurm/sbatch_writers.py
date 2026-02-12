@@ -27,7 +27,7 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
             else:
                 gpu_str = ""
 
-    bangline = "#!/bin/sh\n"
+    bangline = "#!/bin/bash\n"
 
     # Optional cluster and partition settings (for VSC)
     cluster_str = ""
@@ -53,6 +53,12 @@ def make_sbatch_header(slurm_config: SlurmConfig, n_jobs: int) -> str:
         {cluster_str}
         {partition_str}
         {gpu_str}
+
+        # Source environment setup
+        ENV_FILE="$PWD/code/envs/env_vsc.sh"
+        if [ -f "$ENV_FILE" ]; then
+            source "$ENV_FILE"
+        fi
 
         """
     ).format(
