@@ -70,7 +70,7 @@ def make_adaptive_sign_grid(epsilon_values, lr_start, lr_end, lr_density):
     
     Includes two momentum variants:
     - NM: No momentum (vanilla AdaptiveSign)
-    - M: Standard momentum (normalize gradient first, then accumulate momentum)
+    - M: Standard momentum (first calculate momentum, then normalize)
     
     Args:
         epsilon_values: List of epsilon values to test
@@ -89,7 +89,7 @@ def make_adaptive_sign_grid(epsilon_values, lr_start, lr_end, lr_density):
         for lr in learning_rates:
             optimizers.append(AdaptiveSign_NM(lr, eps=eps))
         
-        # With momentum (normalize then accumulate)
+        # With momentum (first calculate momentum, then normalize)
         for lr in learning_rates:
             optimizers.append(AdaptiveSign_M(lr, eps=eps))
     

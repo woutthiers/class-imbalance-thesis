@@ -43,7 +43,7 @@ class AdaptiveSign(Opt):
 
 
 def AdaptiveSign_M(lr: LearningRate, eps: float = 1e-8) -> AdaptiveSign:
-    """Adaptive Sign with momentum (beta1=0.9) - accumulate then normalize"""
+    """Adaptive Sign with momentum (beta1=0.9) - first calculate momentum, then normalize"""
     return AdaptiveSign(learning_rate=lr, momentum=0.9, eps=eps)
 
 
@@ -62,7 +62,7 @@ class AdaptiveSignNormFirst(Opt):
     2. m = beta * m_prev + (1-beta) * normalized_g
     3. x = x - lr * m
     
-    This differs from AdaptiveSign_M which accumulates then normalizes:
+    This differs from AdaptiveSign_M which calculates momentum first then normalizes:
     1. m = beta * m_prev + (1-beta) * g
     2. x = x - lr * m / (eps + |m|)
     """
@@ -90,8 +90,10 @@ class AdaptiveSignOptimizer(TorchOptimizer):
     Update rule: x_{i,k+1} = x_{i,k} - gamma * g_i / (eps + |g_i|)
     
     With momentum (if momentum > 0):
-    m_t = beta1 * m_{t-1} + (1 - beta1) * g_t
-    x_t = x_{t-1} - gamma * m_t / (eps + |m_t|)
+    1. Calculate momentum: m_t = beta1 * m_{t-1} + (1 - beta1) * g_t
+    2. Normalize momentum: x_t = x_{t-1} - gamma * m_t / (eps + |m_t|)
+    
+    Order: momentum calculation FIRST, then normalization.
     """
 
     def __init__(
@@ -188,6 +190,8 @@ def adaptive_sign_step(
     
     Implements: x_{i,k+1} = x_{i,k} - gamma * d_i / (eps + |d_i|)
     where d_i is the gradient (or momentum buffer if momentum > 0).
+    
+    Order: First calculate momentum from gradients, then normalize the momentum.
     """
     for i, param in enumerate(params):
         grad = grads[i]
