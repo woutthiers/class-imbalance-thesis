@@ -51,6 +51,11 @@ def plot_heatmap_grid(
         using_step=False
     )
     
+    # Add batch_size and epsilon from experiment configs
+    # The dataframe index should correspond to experiment indices
+    exps_df["batch_size"] = [experiments[i].problem.dataset.batch_size for i in range(len(exps_df))]
+    exps_df["eps"] = [experiments[i].optim.eps for i in range(len(exps_df))]
+    
     # Filter for AdaptiveSign optimizer
     exps_df = exps_df[exps_df["opt"] == "AdaptiveSign"]
     
@@ -61,12 +66,6 @@ def plot_heatmap_grid(
     else:
         exps_df = exps_df[exps_df["momentum"] == 0]
         variant_name = "without Momentum"
-    
-    # Add epsilon column (parse from experiment config)
-    def extract_epsilon(row):
-        # Epsilon is stored in the optimizer config
-        # You may need to adjust this based on how it's logged
-        return row.get("eps", 1e-8)
     
     # Create figure with subplots for each batch size
     n_batches = len(batch_sizes)
