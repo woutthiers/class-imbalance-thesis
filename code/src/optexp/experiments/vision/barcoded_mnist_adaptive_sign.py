@@ -45,10 +45,10 @@ from optexp.optimizers.learning_rate import LearningRate
 # Batch sizes to test (will run experiments for each)
 BATCH_SIZES = [64, 256, 1024]  # Three different batch sizes
 
-# Learning rate grid - 5 learning rates
-LR_START = -5    # 10^-5
+# Learning rate grid - 7 learning rates
+LR_START = -7    # 10^-7
 LR_END = -1      # 10^-1
-LR_DENSITY = 0   # 0=coarse gives 5 points: 10^-5, 10^-4, 10^-3, 10^-2, 10^-1
+LR_DENSITY = 0   # 0=coarse gives 7 points: 10^-7, 10^-6, 10^-5, 10^-4, 10^-3, 10^-2, 10^-1
 
 # Epsilon values to test - 5 epsilon values
 EPSILON_VALUES = [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
@@ -147,32 +147,6 @@ for batch_size in BATCH_SIZES:
     
     experiments.extend(batch_experiments)
     print(f"Generated {len(batch_experiments)} experiments for batch_size={batch_size}")
-
-# Generate additional experiments for extra learning rates (1e-7, 1e-6)
-# These are added separately to avoid re-running existing experiments
-EXTRA_LRS = [LearningRate(1e-7), LearningRate(1e-6)]
-extra_optimizers = []
-for eps in EPSILON_VALUES:
-    for lr in EXTRA_LRS:
-        extra_optimizers.append(AdaptiveSign_NM(lr, eps=eps))
-        extra_optimizers.append(AdaptiveSign_M(lr, eps=eps))
-
-for batch_size in BATCH_SIZES:
-    dataset = ImbalancedMNISTWithBarcodes(name="MNIST", batch_size=batch_size)
-    model = SimpleMNISTCNN()
-    problem = ClassificationWithMajorityMinorityStats(
-        model, dataset, num_majority_classes=10
-    )
-    
-    extra_experiments = Experiment.generate_experiments_from_opts_and_seeds(
-        opts_and_seeds=[(extra_optimizers, seeds)],
-        problem=problem,
-        epochs=EPOCHS,
-        group=group,
-    )
-    
-    experiments.extend(extra_experiments)
-    print(f"Generated {len(extra_experiments)} additional experiments for batch_size={batch_size} with LR={EXTRA_LRS}")
 
 print(f"\nTotal experiments: {len(experiments)}")
 print(f"  - Batch sizes: {BATCH_SIZES}")
