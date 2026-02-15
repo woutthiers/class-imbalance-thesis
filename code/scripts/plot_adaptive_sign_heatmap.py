@@ -51,6 +51,11 @@ def plot_heatmap_grid(
         using_step=False
     )
     
+    print(f"\n=== DEBUG: Initial DataFrame ===")
+    print(f"Shape: {exps_df.shape}")
+    print(f"Columns: {exps_df.columns.tolist()}")
+    print(f"First few rows:\n{exps_df.head()}")
+    
     # Map exp_id to batch_size and epsilon
     exp_metadata = {}
     for exp in experiments:
@@ -60,12 +65,25 @@ def plot_heatmap_grid(
             'eps': exp.optim.eps
         }
     
+    print(f"\n=== DEBUG: Experiment Metadata ===")
+    print(f"Total experiments: {len(exp_metadata)}")
+    print(f"Sample metadata (first 3):")
+    for i, (exp_id, meta) in enumerate(list(exp_metadata.items())[:3]):
+        print(f"  {exp_id}: batch_size={meta['batch_size']}, eps={meta['eps']}")
+    
     # Add batch_size and epsilon to dataframe using exp_id mapping
     exps_df["batch_size"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('batch_size'))
     exps_df["eps"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('eps'))
     
+    print(f"\n=== DEBUG: After adding batch_size and eps ===")
+    print(f"Unique batch_sizes: {sorted(exps_df['batch_size'].dropna().unique())}")
+    print(f"Unique eps values: {sorted(exps_df['eps'].dropna().unique())}")
+    print(f"Sample rows:\n{exps_df[['exp_id', 'batch_size', 'eps', 'lr', 'opt', 'momentum', metric_name]].head(10)}")
+    
     # Filter for AdaptiveSign optimizer
     exps_df = exps_df[exps_df["opt"] == "AdaptiveSign"]
+    print(f"\n=== DEBUG: After filtering for AdaptiveSign ===")
+    print(f"Rows remaining: {len(exps_df)}")
     
     # Filter by momentum variant
     if momentum_variant == "M":
@@ -75,6 +93,10 @@ def plot_heatmap_grid(
         exps_df = exps_df[exps_df["momentum"] == 0]
         variant_name = "without Momentum"
     
+    print(f"\n=== DEBUG: After filtering for {variant_name} ===")
+    print(f"Rows remaining: {len(exps_df)}")
+    print(f"Momentum values: {exps_df['momentum'].unique()}")
+    
     # Create figure with subplots for each batch size
     n_batches = len(batch_sizes)
     fig, axes = plt.subplots(1, n_batches, figsize=(6*n_batches, 5))
@@ -82,12 +104,20 @@ def plot_heatmap_grid(
         axes = [axes]
     
     for idx, batch_size in enumerate(batch_sizes):
+        print(f"\n=== DEBUG: Processing batch_size={batch_size} ===")
+        
         # Filter by batch size
         batch_df = exps_df[exps_df["batch_size"] == batch_size]
+        
+        print(f"Rows for this batch_size: {len(batch_df)}")
         
         if batch_df.empty:
             print(f"Warning: No data for batch_size={batch_size}")
             continue
+        
+        print(f"Unique LRs: {sorted(batch_df['lr'].unique())}")
+        print(f"Unique eps: {sorted(batch_df['eps'].unique())}")
+        print(f"{metric_name} range: [{batch_df[metric_name].min():.4f}, {batch_df[metric_name].max():.4f}]")
         
         # Create pivot table for heatmap
         # Group by LR and epsilon, take mean across seeds
@@ -97,6 +127,10 @@ def plot_heatmap_grid(
             columns="lr",
             aggfunc="mean"
         )
+        
+        print(f"\n=== DEBUG: Pivot table for batch_size={batch_size} ===")
+        print(f"Pivot shape: {pivot_data.shape}")
+        print(f"Pivot data:\n{pivot_data}")
         
         # Sort: epsilon descending (largest at top), learning rate ascending (left to right)
         pivot_data = pivot_data.sort_index(ascending=False)  # eps descending
