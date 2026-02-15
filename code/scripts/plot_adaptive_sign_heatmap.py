@@ -98,20 +98,32 @@ def plot_heatmap_grid(
             aggfunc="mean"
         )
         
-        # Sort by epsilon and learning rate
-        pivot_data = pivot_data.sort_index(ascending=True)
-        pivot_data = pivot_data.sort_index(axis=1, ascending=True)
+        # Sort: epsilon descending (largest at top), learning rate ascending (left to right)
+        pivot_data = pivot_data.sort_index(ascending=False)  # eps descending
+        pivot_data = pivot_data.sort_index(axis=1, ascending=True)  # lr ascending
         
         # Create heatmap using matplotlib
         ax = axes[idx]
         
-        # Create the heatmap
+        # Determine colormap and normalization
+        if "loss" in metric_name.lower():
+            cmap = "YlOrRd"  # Yellow-Orange-Red for loss (lower is better)
+            vmin = None
+            vmax = None
+        else:
+            cmap = "RdYlGn"  # Red-Yellow-Green for accuracy (higher is better)
+            vmin = 0
+            vmax = 1
+        
+        # Create the heatmap with origin at upper-left
         im = ax.imshow(
             pivot_data.values,
-            cmap="viridis_r" if "loss" in metric_name.lower() else "RdYlGn",
+            cmap=cmap,
             aspect="auto",
-            vmin=0 if "Accuracy" in metric_name else None,
-            vmax=1 if "Accuracy" in metric_name else None,
+            interpolation='nearest',
+            origin='upper',  # Important: matches sorted data
+            vmin=vmin,
+            vmax=vmax,
         )
         
         # Add colorbar
@@ -123,11 +135,20 @@ def plot_heatmap_grid(
             for j in range(len(pivot_data.columns)):
                 val = pivot_data.iloc[i, j]
                 if not np.isnan(val):
-                    text = ax.text(
+                    # Determine text color based on normalized value for better visibility
+                    if vmin is not None and vmax is not None:
+                        normalized = (val - vmin) / (vmax - vmin)
+                        text_color = "white" if normalized < 0.5 else "black"
+                    else:
+                        # For loss, use simpler logic
+                        text_color = "white"
+                    
+                    ax.text(
                         j, i, f"{val:.3f}",
                         ha="center", va="center",
-                        color="white" if val < 0.5 else "black",
-                        fontsize=8
+                        color=text_color,
+                        fontsize=8,
+                        weight='bold'
                     )
         
         ax.set_title(f"Batch Size {batch_size} ({variant_name})")
