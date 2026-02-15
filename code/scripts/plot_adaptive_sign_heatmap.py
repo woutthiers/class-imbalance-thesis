@@ -10,6 +10,8 @@ Usage:
 import argparse
 from pathlib import Path
 
+import matplotlib
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -209,12 +211,12 @@ def plot_heatmap_grid(
     save_dir = config.get_plots_directory() / "AdaptiveSign_ImbalancedMNIST_CNN" / "heatmaps"
     save_dir.mkdir(parents=True, exist_ok=True)
     
-    filename = f"{metric_name}_epoch{epoch}_{momentum_variant}.pdf"
+    filename = f"{metric_name}_epoch{epoch}_{momentum_variant}.png"
     filepath = save_dir / filename
-    plt.savefig(filepath, bbox_inches="tight")
+    plt.savefig(filepath, bbox_inches="tight", dpi=150)
     print(f"Saved: {filepath}")
     
-    plt.show()
+    plt.close(fig)
 
 
 def plot_all_metrics(experiments, epoch=None):
