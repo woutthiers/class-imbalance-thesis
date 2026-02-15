@@ -16,7 +16,7 @@ import pandas as pd
 
 from optexp import config
 from optexp.experiments.vision.barcoded_mnist_adaptive_sign import experiments
-from optexp.plotter.data_utils import get_exps_data_epoch, load_data_for_exps
+from optexp.plotter.data_utils import load_data_for_exps
 
 
 def plot_heatmap_grid(
@@ -45,53 +45,63 @@ def plot_heatmap_grid(
     # Load experiment data
     exps_w_data = load_data_for_exps(experiments)
     
-    # Extract batch_size and eps from each experiment before building dataframe
-    print(f"\n=== DEBUG: Extracting batch_size and eps from experiments ===")
-    exp_metadata = {}
+    all_metrics = list(set([metric_name, "tr_Accuracy", "tr_CrossEntropyLoss", "va_CrossEntropyLoss"]))
+    
+    # Build dataframe directly from experiment data to avoid thresholding/clamping
+    # in get_exps_data_epoch which replaces diverged values with initial values
+    list_of_dicts = []
     for exp_w_data in exps_w_data:
         exp = exp_w_data["exp"]
-        exp_id = exp.exp_id()
-        # Get batch_size directly from the experiment object
-        batch_size = exp.problem.dataset.batch_size
-        eps = exp.optim.eps
-        exp_metadata[exp_id] = {
-            'batch_size': batch_size,
-            'eps': eps
+        df = exp_w_data["data"]
+        
+        if len(df.index) == 0:
+            continue
+        
+        row = {
+            "seed": exp.seed,
+            "lr": exp.optim.learning_rate.as_float(),
+            "exp_id": exp.exp_id(),
+            "group": exp.group,
+            "opt": exp.optim.__class__.__name__,
+            "batch_size": exp.problem.dataset.batch_size,
+            "eps": exp.optim.eps,
         }
+        
+        # Extract momentum
+        if hasattr(exp.optim, 'beta1'):
+            row["momentum"] = exp.optim.beta1
+        elif hasattr(exp.optim, 'momentum'):
+            row["momentum"] = exp.optim.momentum
+        else:
+            row["momentum"] = 0.0
+        
+        # Extract raw metric values at the target epoch (no clamping)
+        df_indexed = df.set_index("epoch")
+        for m in all_metrics:
+            if m not in df_indexed.columns:
+                row[m] = np.nan
+                continue
+            if epoch in df_indexed.index:
+                val = df_indexed.loc[epoch, m]
+                row[m] = val if np.isfinite(val) else np.nan
+            else:
+                # Epoch not reached — use last available value
+                last_valid = df_indexed[m].last_valid_index()
+                if last_valid is not None:
+                    row[m] = df_indexed.loc[last_valid, m]
+                else:
+                    row[m] = np.nan
+        
+        list_of_dicts.append(row)
     
-    print(f"Total experiments with metadata: {len(exp_metadata)}")
-    print(f"Batch size distribution:")
-    batch_dist = {}
-    for meta in exp_metadata.values():
-        bs = meta['batch_size']
-        batch_dist[bs] = batch_dist.get(bs, 0) + 1
-    for bs, count in sorted(batch_dist.items()):
-        print(f"  batch_size={bs}: {count} experiments")
+    exps_df = pd.DataFrame(list_of_dicts)
     
-    exps_df = get_exps_data_epoch(
-        exps_w_data, 
-        [metric_name, "tr_Accuracy", "tr_CrossEntropyLoss", "va_CrossEntropyLoss"],
-        epoch,
-        using_step=False
-    )
-    
-    print(f"\n=== DEBUG: Initial DataFrame ===")
+    print(f"\n=== DEBUG: Built DataFrame ===")
     print(f"Shape: {exps_df.shape}")
     print(f"Columns: {exps_df.columns.tolist()}")
-    print(f"First few rows:\n{exps_df.head()}")
-    print(f"\n=== DEBUG: Checking if batch_size already in dataframe ===")
-    if 'batch_size' in exps_df.columns:
-        print(f"batch_size column exists! Values: {exps_df['batch_size'].unique()}")
-    else:
-        print("batch_size column does NOT exist in dataframe")
-    
-    # Add batch_size and epsilon to dataframe using exp_id mapping
-    exps_df["batch_size"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('batch_size'))
-    exps_df["eps"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('eps'))
-    
-    print(f"\n=== DEBUG: After adding batch_size and eps ===")
     print(f"Unique batch_sizes: {sorted(exps_df['batch_size'].dropna().unique())}")
     print(f"Unique eps values: {sorted(exps_df['eps'].dropna().unique())}")
+    print(f"Unique lrs: {sorted(exps_df['lr'].dropna().unique())}")
     print(f"Sample rows:\n{exps_df[['exp_id', 'batch_size', 'eps', 'lr', 'opt', 'momentum', metric_name]].head(10)}")
     
     # Filter for AdaptiveSign optimizer
