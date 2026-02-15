@@ -36,6 +36,7 @@ from optexp.optimizers import (
 )
 from optexp.runner.slurm import slurm_config
 from optexp.utils import SEEDS_1, SEEDS_3, lr_grid
+from optexp.optimizers.learning_rate import LearningRate
 
 # ============================================================================
 # CONFIGURATION - Adjust these parameters
@@ -147,9 +148,9 @@ for batch_size in BATCH_SIZES:
     experiments.extend(batch_experiments)
     print(f"Generated {len(batch_experiments)} experiments for batch_size={batch_size}")
 
-# Generate additional experiments for extra learning rates (1e-7)
+# Generate additional experiments for extra learning rates (1e-7, 1e-6)
 # These are added separately to avoid re-running existing experiments
-EXTRA_LRS = [1e-7, 1e-6]
+EXTRA_LRS = [LearningRate(1e-7), LearningRate(1e-6)]
 extra_optimizers = []
 for eps in EPSILON_VALUES:
     for lr in EXTRA_LRS:
