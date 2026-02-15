@@ -153,15 +153,15 @@ def plot_heatmap_grid(
         # Create heatmap using matplotlib
         ax = axes[idx]
         
-        # Determine colormap and normalization
+        # Determine colormap and normalization based on actual data range
         if "loss" in metric_name.lower():
-            cmap = "YlOrRd"  # Yellow-Orange-Red for loss (lower is better)
-            vmin = None
-            vmax = None
+            cmap = "YlOrRd_r"  # Reversed: Red for high loss, Yellow for low loss
+            vmin = pivot_data.values.min()
+            vmax = pivot_data.values.max()
         else:
             cmap = "RdYlGn"  # Red-Yellow-Green for accuracy (higher is better)
-            vmin = 0
-            vmax = 1
+            vmin = pivot_data.values.min()
+            vmax = pivot_data.values.max()
         
         # Create the heatmap with origin at upper-left
         im = ax.imshow(
@@ -184,12 +184,8 @@ def plot_heatmap_grid(
                 val = pivot_data.iloc[i, j]
                 if not np.isnan(val):
                     # Determine text color based on normalized value for better visibility
-                    if vmin is not None and vmax is not None:
-                        normalized = (val - vmin) / (vmax - vmin)
-                        text_color = "white" if normalized < 0.5 else "black"
-                    else:
-                        # For loss, use simpler logic
-                        text_color = "white"
+                    normalized = (val - vmin) / (vmax - vmin) if vmax > vmin else 0.5
+                    text_color = "white" if normalized < 0.5 else "black"
                     
                     ax.text(
                         j, i, f"{val:.3f}",
