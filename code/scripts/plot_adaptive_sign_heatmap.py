@@ -55,21 +55,41 @@ def plot_heatmap_grid(
     print(f"Shape: {exps_df.shape}")
     print(f"Columns: {exps_df.columns.tolist()}")
     print(f"First few rows:\n{exps_df.head()}")
+    print(f"\n=== DEBUG: Checking if batch_size already in dataframe ===")
+    if 'batch_size' in exps_df.columns:
+        print(f"batch_size column exists! Values: {exps_df['batch_size'].unique()}")
+    else:
+        print("batch_size column does NOT exist in dataframe")
     
-    # Map exp_id to batch_size and epsilon
+    # Map exp_id to batch_size and epsilon by matching to experiments list
+    # Need to extract from the original experiment configurations
     exp_metadata = {}
-    for exp in experiments:
-        exp_id = exp.exp_id()
-        exp_metadata[exp_id] = {
-            'batch_size': exp.problem.dataset.batch_size,
-            'eps': exp.optim.eps
-        }
+    
+    # Build metadata from the experiments list - batch_size varies across loop iterations
+    current_idx = 0
+    for batch_size in [64, 256, 1024]:  # Same order as BATCH_SIZES
+        for i in range(32):  # 32 optimizer configs per batch size
+            if current_idx < len(experiments):
+                exp = experiments[current_idx]
+                exp_id = exp.exp_id()
+                exp_metadata[exp_id] = {
+                    'batch_size': batch_size,  # Use the loop variable, not exp.problem.dataset.batch_size
+                    'eps': exp.optim.eps
+                }
+                current_idx += 1
     
     print(f"\n=== DEBUG: Experiment Metadata ===")
-    print(f"Total experiments: {len(exp_metadata)}")
+    print(f"Total experiments in metadata: {len(exp_metadata)}")
+    print(f"Batch size distribution:")
+    batch_dist = {}
+    for meta in exp_metadata.values():
+        bs = meta['batch_size']
+        batch_dist[bs] = batch_dist.get(bs, 0) + 1
+    for bs, count in sorted(batch_dist.items()):
+        print(f"  batch_size={bs}: {count} experiments")
     print(f"Sample metadata (first 3):")
     for i, (exp_id, meta) in enumerate(list(exp_metadata.items())[:3]):
-        print(f"  {exp_id}: batch_size={meta['batch_size']}, eps={meta['eps']}")
+        print(f"  {exp_id[:50]}...: batch_size={meta['batch_size']}, eps={meta['eps']}")
     
     # Add batch_size and epsilon to dataframe using exp_id mapping
     exps_df["batch_size"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('batch_size'))
