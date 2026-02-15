@@ -10,8 +10,8 @@ Dataset configuration:
 - Total: ~10,250 classes, ~101k training samples
 
 The experiment sweeps over:
-- Learning rates (gamma): configurable range
-- Epsilon values: [1e-8, 1e-6, 1e-4, 1e-2, 1e-1, 1.0]
+- Learning rates (gamma): [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
+- Epsilon values: [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
 - Momentum variants: with and without momentum
 """
 from optexp import Experiment, exp_runner_cli
@@ -21,7 +21,7 @@ from optexp.datasets.barcoded_mnist import (
     MNISTAndBarcode,
 )
 from optexp.problems.imbalanced_classification import (
-    FullBatchClassificationWithMajorityMinorityStats,
+    ClassificationWithMajorityMinorityStats,
 )
 from optexp.models.cnn import SimpleMNISTCNN
 from optexp.optimizers import (
@@ -44,13 +44,13 @@ from optexp.utils import SEEDS_1, SEEDS_3, lr_grid
 # Batch sizes to test (will run experiments for each)
 BATCH_SIZES = [64, 256, 1024]  # Three different batch sizes
 
-# Learning rate grid - 4 learning rates
+# Learning rate grid - 5 learning rates
 LR_START = -5    # 10^-5
-LR_END = -2      # 10^-2
-LR_DENSITY = 0   # 0=coarse gives 4 points: 10^-5, 10^-4, 10^-3, 10^-2
+LR_END = -1      # 10^-1
+LR_DENSITY = 0   # 0=coarse gives 5 points: 10^-5, 10^-4, 10^-3, 10^-2, 10^-1
 
-# Epsilon values to test - 4 epsilon values
-EPSILON_VALUES = [1e-8, 1e-4, 1e-2, 1.0]
+# Epsilon values to test - 5 epsilon values
+EPSILON_VALUES = [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
 
 # Number of seeds (1 for quick exploration, 3 for robustness)
 NUM_SEEDS = 1
@@ -123,7 +123,7 @@ all_optimizers = opts_adaptive_sign + opts_baselines
 # Select seeds
 seeds = SEEDS_3[:NUM_SEEDS] if NUM_SEEDS <= 3 else SEEDS_3 + list(range(3, NUM_SEEDS))
 
-group = "AdaptiveSign_ImbalancedMNIST_CNN"
+group = "AdaptiveSign_ImbalancedMNIST_CNN_v2"
 
 # Generate experiments for each batch size
 experiments = []
@@ -131,8 +131,8 @@ for batch_size in BATCH_SIZES:
     # Create dataset with specific batch size
     dataset = ImbalancedMNISTWithBarcodes(name="MNIST", batch_size=batch_size)
     model = SimpleMNISTCNN()
-    # Use grouped metrics: tracks performance on 10 majority classes vs 10,240 minority classes
-    problem = FullBatchClassificationWithMajorityMinorityStats(
+    # Use grouped metrics: tracks performance on 10 majority classes vs 10,230 minority classes
+    problem = ClassificationWithMajorityMinorityStats(
         model, dataset, num_majority_classes=10
     )
     

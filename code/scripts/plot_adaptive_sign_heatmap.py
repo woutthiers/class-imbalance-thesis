@@ -4,6 +4,13 @@ Plot heatmaps for AdaptiveSign experiments: Learning Rate vs Epsilon.
 This script creates 2D heatmap visualizations showing how performance varies
 across the learning rate and epsilon hyperparameter grid.
 
+Experiment grid:
+- Learning rates: [1e-5, 1e-4, 1e-3, 1e-2, 1e-1]
+- Epsilon values: [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
+- Batch sizes: [64, 256, 1024]
+- Momentum variants: with (M) and without (NM)
+- Epochs: 20
+
 Usage:
     python scripts/plot_adaptive_sign_heatmap.py [--epoch EPOCH] [--metric METRIC]
 """
@@ -17,7 +24,11 @@ import numpy as np
 import pandas as pd
 
 from optexp import config
-from optexp.experiments.vision.barcoded_mnist_adaptive_sign import experiments
+from optexp.experiments.vision.barcoded_mnist_adaptive_sign import (
+    experiments,
+    BATCH_SIZES,
+    EPSILON_VALUES,
+)
 from optexp.plotter.data_utils import load_data_for_exps
 
 
@@ -42,7 +53,7 @@ def plot_heatmap_grid(
         epoch = experiments[0].epochs
     
     if batch_sizes is None:
-        batch_sizes = [64, 256, 1024]
+        batch_sizes = BATCH_SIZES
     
     # Load experiment data
     exps_w_data = load_data_for_exps(experiments)
