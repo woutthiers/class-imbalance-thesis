@@ -13,7 +13,6 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 
 from optexp import config
 from optexp.experiments.vision.barcoded_mnist_adaptive_sign import experiments
@@ -96,25 +95,42 @@ def plot_heatmap_grid(
         pivot_data = pivot_data.sort_index(ascending=True)
         pivot_data = pivot_data.sort_index(axis=1, ascending=True)
         
-        # Create heatmap
+        # Create heatmap using matplotlib
         ax = axes[idx]
-        sns.heatmap(
-            pivot_data,
-            annot=True,
-            fmt=".3f",
-            cmap="viridis" if "loss" in metric_name.lower() else "RdYlGn",
-            cbar_kws={"label": metric_name},
-            ax=ax,
+        
+        # Create the heatmap
+        im = ax.imshow(
+            pivot_data.values,
+            cmap="viridis_r" if "loss" in metric_name.lower() else "RdYlGn",
+            aspect="auto",
             vmin=0 if "Accuracy" in metric_name else None,
             vmax=1 if "Accuracy" in metric_name else None,
         )
+        
+        # Add colorbar
+        cbar = plt.colorbar(im, ax=ax)
+        cbar.set_label(metric_name)
+        
+        # Add annotations
+        for i in range(len(pivot_data.index)):
+            for j in range(len(pivot_data.columns)):
+                val = pivot_data.iloc[i, j]
+                if not np.isnan(val):
+                    text = ax.text(
+                        j, i, f"{val:.3f}",
+                        ha="center", va="center",
+                        color="white" if val < 0.5 else "black",
+                        fontsize=8
+                    )
         
         ax.set_title(f"Batch Size {batch_size} ({variant_name})")
         ax.set_xlabel("Learning Rate")
         ax.set_ylabel("Epsilon")
         
-        # Format tick labels
-        ax.set_xticklabels([f"{lr:.0e}" for lr in pivot_data.columns], rotation=45)
+        # Set ticks and labels
+        ax.set_xticks(range(len(pivot_data.columns)))
+        ax.set_yticks(range(len(pivot_data.index)))
+        ax.set_xticklabels([f"{lr:.0e}" for lr in pivot_data.columns], rotation=45, ha='right')
         ax.set_yticklabels([f"{eps:.0e}" for eps in pivot_data.index], rotation=0)
     
     plt.suptitle(
