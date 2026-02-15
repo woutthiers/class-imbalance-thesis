@@ -156,12 +156,12 @@ def plot_heatmap_grid(
         # Determine colormap and normalization based on actual data range
         if "loss" in metric_name.lower():
             cmap = "YlOrRd_r"  # Reversed: Red for high loss, Yellow for low loss
-            vmin = pivot_data.values.min()
-            vmax = pivot_data.values.max()
+            vmin = np.nanmin(pivot_data.values)
+            vmax = np.nanmax(pivot_data.values)
         else:
             cmap = "RdYlGn"  # Red-Yellow-Green for accuracy (higher is better)
-            vmin = pivot_data.values.min()
-            vmax = pivot_data.values.max()
+            vmin = np.nanmin(pivot_data.values)
+            vmax = np.nanmax(pivot_data.values)
         
         # Create the heatmap with origin at upper-left
         im = ax.imshow(
