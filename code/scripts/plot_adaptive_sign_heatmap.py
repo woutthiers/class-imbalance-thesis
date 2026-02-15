@@ -152,68 +152,51 @@ def plot_heatmap_grid(
             aggfunc="mean"
         )
         
-        print(f"\n=== DEBUG: Pivot table for batch_size={batch_size} ===")
-        print(f"Pivot shape: {pivot_data.shape}")
-        print(f"Pivot data:\n{pivot_data}")
-        
         # Sort: epsilon descending (largest at top), learning rate ascending (left to right)
-        pivot_data = pivot_data.sort_index(ascending=False)  # eps descending
-        pivot_data = pivot_data.sort_index(axis=1, ascending=True)  # lr ascending
+        pivot_data = pivot_data.sort_index(ascending=False)
+        pivot_data = pivot_data.sort_index(axis=1, ascending=True)
         
-        # Create heatmap using matplotlib
+        # Force to float numpy array — this is critical for imshow color mapping
+        data = pivot_data.to_numpy(dtype=float, copy=True)
+        
+        nrows, ncols = data.shape
+        eps_labels = [f"{e:.0e}" for e in pivot_data.index]
+        lr_labels = [f"{lr:.0e}" for lr in pivot_data.columns]
+        
+        print(f"\n=== DEBUG: Pivot table for batch_size={batch_size} ===")
+        print(f"Shape: {data.shape}, dtype: {data.dtype}")
+        print(f"Values:\n{data}")
+        print(f"Min={np.nanmin(data):.4f}, Max={np.nanmax(data):.4f}")
+        
         ax = axes[idx]
+        cmap = "YlOrRd_r" if "loss" in metric_name.lower() else "RdYlGn"
         
-        # Determine colormap and normalization based on actual data range
-        if "loss" in metric_name.lower():
-            cmap = "YlOrRd_r"  # Reversed: Red for high loss, Yellow for low loss
-            vmin = np.nanmin(pivot_data.values)
-            vmax = np.nanmax(pivot_data.values)
-        else:
-            cmap = "RdYlGn"  # Red-Yellow-Green for accuracy (higher is better)
-            vmin = np.nanmin(pivot_data.values)
-            vmax = np.nanmax(pivot_data.values)
-        
-        # Create the heatmap with origin at upper-left
-        im = ax.imshow(
-            pivot_data.values,
-            cmap=cmap,
-            aspect="auto",
-            interpolation='nearest',
-            origin='upper',  # Important: matches sorted data
-            vmin=vmin,
-            vmax=vmax,
-        )
+        im = ax.imshow(data, cmap=cmap, aspect="auto")
         
         # Add colorbar
         cbar = plt.colorbar(im, ax=ax)
         cbar.set_label(metric_name)
         
-        # Add annotations
-        for i in range(len(pivot_data.index)):
-            for j in range(len(pivot_data.columns)):
-                val = pivot_data.iloc[i, j]
-                if not np.isnan(val):
-                    # Determine text color based on normalized value for better visibility
-                    normalized = (val - vmin) / (vmax - vmin) if vmax > vmin else 0.5
-                    text_color = "white" if normalized < 0.5 else "black"
-                    
-                    ax.text(
-                        j, i, f"{val:.3f}",
-                        ha="center", va="center",
-                        color=text_color,
-                        fontsize=8,
-                        weight='bold'
-                    )
+        # Annotate each cell with its value
+        for i in range(nrows):
+            for j in range(ncols):
+                val = data[i, j]
+                if np.isfinite(val):
+                    # Pick text color for readability against background
+                    norm_val = im.norm(val)
+                    rgba = im.cmap(norm_val)
+                    luminance = 0.299 * rgba[0] + 0.587 * rgba[1] + 0.114 * rgba[2]
+                    text_color = "white" if luminance < 0.5 else "black"
+                    ax.text(j, i, f"{val:.3f}", ha="center", va="center",
+                            color=text_color, fontsize=8, weight="bold")
         
         ax.set_title(f"Batch Size {batch_size} ({variant_name})")
         ax.set_xlabel("Learning Rate")
         ax.set_ylabel("Epsilon")
-        
-        # Set ticks and labels
-        ax.set_xticks(range(len(pivot_data.columns)))
-        ax.set_yticks(range(len(pivot_data.index)))
-        ax.set_xticklabels([f"{lr:.0e}" for lr in pivot_data.columns], rotation=45, ha='right')
-        ax.set_yticklabels([f"{eps:.0e}" for eps in pivot_data.index], rotation=0)
+        ax.set_xticks(range(ncols))
+        ax.set_yticks(range(nrows))
+        ax.set_xticklabels(lr_labels, rotation=45, ha="right")
+        ax.set_yticklabels(eps_labels)
     
     plt.suptitle(
         f"AdaptiveSign {variant_name}: {metric_name} at Epoch {epoch}",
