@@ -51,10 +51,18 @@ def plot_heatmap_grid(
         using_step=False
     )
     
-    # Add batch_size and epsilon from experiment configs
-    # The dataframe index should correspond to experiment indices
-    exps_df["batch_size"] = [experiments[i].problem.dataset.batch_size for i in range(len(exps_df))]
-    exps_df["eps"] = [experiments[i].optim.eps for i in range(len(exps_df))]
+    # Map exp_id to batch_size and epsilon
+    exp_metadata = {}
+    for exp in experiments:
+        exp_id = exp.exp_id()
+        exp_metadata[exp_id] = {
+            'batch_size': exp.problem.dataset.batch_size,
+            'eps': exp.optim.eps
+        }
+    
+    # Add batch_size and epsilon to dataframe using exp_id mapping
+    exps_df["batch_size"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('batch_size'))
+    exps_df["eps"] = exps_df["exp_id"].map(lambda eid: exp_metadata.get(eid, {}).get('eps'))
     
     # Filter for AdaptiveSign optimizer
     exps_df = exps_df[exps_df["opt"] == "AdaptiveSign"]
