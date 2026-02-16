@@ -79,9 +79,12 @@ def extract_majority_minority_metrics(exps_w_data, epoch=None):
         ]
         
         for metric in grouped_metrics:
+            base_name = metric.replace("MajorityMinority", "")
+            
             if metric not in df_indexed.columns:
-                # Metric not present (shouldn't happen)
-                base_name = metric.replace("MajorityMinority", "")
+                # Metric not present - check if data was downloaded
+                print(f"WARNING: {metric} not found in data for exp {exp.exp_id()}")
+                print(f"  Available columns: {df_indexed.columns.tolist()}")
                 row[f"{base_name}_majority"] = np.nan
                 row[f"{base_name}_minority"] = np.nan
                 continue
@@ -97,13 +100,26 @@ def extract_majority_minority_metrics(exps_w_data, epoch=None):
                     val = None
             
             # Parse the list [majority, minority]
-            if val is not None and isinstance(val, list) and len(val) == 2:
-                base_name = metric.replace("MajorityMinority", "")
-                row[f"{base_name}_majority"] = val[0]
-                row[f"{base_name}_minority"] = val[1]
+            # The value might be stored as a string representation of a list
+            if val is not None:
+                # Try to parse if it's a string
+                if isinstance(val, str):
+                    try:
+                        import ast
+                        val = ast.literal_eval(val)
+                    except:
+                        print(f"WARNING: Could not parse string value for {metric}: {val}")
+                        val = None
+                
+                if isinstance(val, (list, np.ndarray)) and len(val) == 2:
+                    row[f"{base_name}_majority"] = float(val[0])
+                    row[f"{base_name}_minority"] = float(val[1])
+                else:
+                    print(f"WARNING: Unexpected format for {metric}: {type(val)} = {val}")
+                    row[f"{base_name}_majority"] = np.nan
+                    row[f"{base_name}_minority"] = np.nan
             else:
                 # Fallback to NaN
-                base_name = metric.replace("MajorityMinority", "")
                 row[f"{base_name}_majority"] = np.nan
                 row[f"{base_name}_minority"] = np.nan
         
@@ -137,6 +153,17 @@ def plot_majority_minority_heatmap(
     
     # Load experiment data
     exps_w_data = load_data_for_exps(experiments)
+    
+    # Check if any data was loaded
+    data_loaded = sum(1 for exp_w_data in exps_w_data if len(exp_w_data["data"]) > 0)
+    print(f"\n=== Data Loading Summary ===")
+    print(f"Total experiments: {len(experiments)}")
+    print(f"Experiments with data: {data_loaded}")
+    if data_loaded == 0:
+        print("\nERROR: No experiment data found!")
+        print("Have you downloaded the data from WandB?")
+        print("Run: python -m optexp.experiments.vision.barcoded_mnist_adaptive_sign --download")
+        return
     
     # Extract majority/minority metrics
     exps_df = extract_majority_minority_metrics(exps_w_data, epoch=epoch)
@@ -187,6 +214,18 @@ def plot_majority_minority_heatmap(
             metric_name = f"{metric_base}_{class_type}"
             
             print(f"Plotting {metric_name}")
+            
+            # Check if we have valid data
+            valid_data_count = batch_df[metric_name].notna().sum()
+            print(f"  Valid data points: {valid_data_count}/{len(batch_df)}")
+            
+            if valid_data_count == 0:
+                print(f"  WARNING: No valid data for {metric_name}, skipping subplot")
+                ax.text(0.5, 0.5, f"No data available\nfor {metric_name}", 
+                       ha="center", va="center", transform=ax.transAxes)
+                ax.set_title(f"Batch Size {batch_size}\n{class_type.capitalize()} Classes")
+                continue
+            
             print(f"  Range: [{batch_df[metric_name].min():.4f}, {batch_df[metric_name].max():.4f}]")
             
             # Create pivot table for heatmap
