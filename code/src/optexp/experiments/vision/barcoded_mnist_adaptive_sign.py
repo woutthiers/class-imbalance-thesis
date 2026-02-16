@@ -60,7 +60,7 @@ NUM_SEEDS = 1
 EPOCHS = 20
 
 # Include baseline optimizers (Adam, SGD)
-INCLUDE_BASELINES = False  # Disabled for quick focused comparison
+INCLUDE_BASELINES = True  # Disabled for quick focused comparison
 
 # ============================================================================
 
@@ -108,13 +108,13 @@ opts_adaptive_sign = make_adaptive_sign_grid(
 # Create baseline optimizer grid (optional)
 opts_baselines = []
 if INCLUDE_BASELINES:
-    # Adam baselines (typically good around 1e-3 to 1e-4)
-    for lr in lr_grid(start=-4, end=-2, density=1):
-        opts_baselines.append(Adam_NM(lr))
-        opts_baselines.append(Adam_M(lr))
+    # Adam baselines disabled
+    # for lr in lr_grid(start=-4, end=-2, density=1):
+    #     opts_baselines.append(Adam_NM(lr))
+    #     opts_baselines.append(Adam_M(lr))
     
     # SGD baselines (typically good around 1e-1 to 1.0)
-    for lr in lr_grid(start=-2, end=0, density=1):
+    for lr in lr_grid(start=-6, end=-1, density=1):
         opts_baselines.append(SGD_NM(lr))
         opts_baselines.append(SGD_M(lr))
 
