@@ -274,36 +274,19 @@ if __name__ == "__main__":
         default="both",
         help="Momentum variant to plot (default: both)"
     )
-    parser.add_argument(
-        "--group",
-        type=str,
-        default=None,
-        help="WandB group name to plot (default: uses experiments from barcoded_mnist_adaptive_sign.py). Use 'AdaptiveSign_ImbalancedMNIST_CNN' for full-batch results."
-    )
     
     args = parser.parse_args()
-    
-    # If a different group is specified, filter experiments by that group
-    exps_to_plot = experiments
-    if args.group:
-        print(f"Filtering experiments for group: {args.group}")
-        exps_to_plot = [exp for exp in experiments if exp.group == args.group]
-        if not exps_to_plot:
-            print(f"Warning: No experiments found with group '{args.group}'")
-            print(f"Available groups: {set(exp.group for exp in experiments)}")
-            exit(1)
-        print(f"Found {len(exps_to_plot)} experiments in group '{args.group}'")
     
     if args.metric:
         # Plot specific metric
         momentum_variants = ["M", "NM"] if args.momentum == "both" else [args.momentum]
         for variant in momentum_variants:
             plot_heatmap_grid(
-                exps_to_plot,
+                experiments,
                 metric_name=args.metric,
                 epoch=args.epoch,
                 momentum_variant=variant
             )
     else:
         # Plot all metrics
-        plot_all_metrics(exps_to_plot, epoch=args.epoch)
+        plot_all_metrics(experiments, epoch=args.epoch)
