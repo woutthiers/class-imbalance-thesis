@@ -108,10 +108,10 @@ opts_adaptive_sign = make_adaptive_sign_grid(
 # Create baseline optimizer grid (optional)
 opts_baselines = []
 if INCLUDE_BASELINES:
-    # Adam baselines disabled
-    # for lr in lr_grid(start=-4, end=-2, density=1):
-    #     opts_baselines.append(Adam_NM(lr))
-    #     opts_baselines.append(Adam_M(lr))
+    # Adam baselines (minimal grid: 3 learning rates)
+    for lr in lr_grid(start=-4, end=-2, density=0):
+        opts_baselines.append(Adam_NM(lr))
+        opts_baselines.append(Adam_M(lr))
     
     # SGD baselines (typically good around 1e-1 to 1.0)
     for lr in lr_grid(start=-6, end=-1, density=1):
