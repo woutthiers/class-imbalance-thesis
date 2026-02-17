@@ -43,7 +43,7 @@ from optexp.optimizers.learning_rate import LearningRate
 # ============================================================================
 
 # Batch sizes to test (will run experiments for each)
-BATCH_SIZES = [64, 256, 1024]  # Three different batch sizes
+BATCH_SIZES = [8, 64, 256, 1024]  # Four different batch sizes
 
 # Learning rate grid - 7 learning rates
 LR_START = -7    # 10^-7
