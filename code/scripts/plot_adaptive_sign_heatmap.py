@@ -70,6 +70,10 @@ def plot_heatmap_grid(
         if len(df.index) == 0:
             continue
         
+        # Filter for AdaptiveSign only (SGD/Adam don't have eps parameter)
+        if exp.optim.__class__.__name__ != "AdaptiveSign":
+            continue
+        
         row = {
             "seed": exp.seed,
             "lr": exp.optim.learning_rate.as_float(),
