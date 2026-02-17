@@ -107,7 +107,7 @@ def main():
         return
     
     # Create save directory
-    save_dir = config.get_data_directory() / "crashed_runs"
+    save_dir = Path(config.get_base_directory()) / "data" / "crashed_runs"
     save_dir.mkdir(parents=True, exist_ok=True)
     print(f"\nSaving to: {save_dir}")
     
