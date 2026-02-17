@@ -66,14 +66,34 @@ def main():
     
     print(f"\nTotal runs in group: {len(runs)}")
     
+    # First, let's see what crashed runs we have
+    print("\n" + "="*70)
+    print("Analyzing all crashed runs:")
+    print("="*70)
+    crashed_runs = [r for r in runs if r.state == "crashed"]
+    print(f"Total crashed runs: {len(crashed_runs)}")
+    
+    # Sample the first few to see their configs
+    print("\nSample crashed runs (first 10):")
+    for run in crashed_runs[:10]:
+        history_len = len(run.history())
+        batch_size = run.config.get("batch_size", "N/A")
+        print(f"  {run.name}: batch_size={batch_size}, state={run.state}, history={history_len} rows")
+        # Show all config keys to debug
+        if batch_size == "N/A":
+            print(f"    Config keys: {list(run.config.keys())}")
+    
     # Filter for crashed runs with batch_size=8
     crashed_bs8_runs = []
     for run in runs:
-        if run.state == "crashed" and run.config.get("batch_size") == 8:
-            history_len = len(run.history())
-            if history_len > 0:
-                crashed_bs8_runs.append(run)
-                print(f"  Found: {run.name} - {history_len} epochs logged")
+        if run.state == "crashed":
+            # Try different ways to get batch size
+            batch_size = run.config.get("batch_size") or run.config.get("problem", {}).get("dataset", {}).get("batch_size")
+            if batch_size == 8:
+                history_len = len(run.history())
+                if history_len > 0:
+                    crashed_bs8_runs.append(run)
+                    print(f"  Found: {run.name} - {history_len} epochs logged")
     
     print(f"\nFound {len(crashed_bs8_runs)} crashed batch_size=8 runs with data")
     
