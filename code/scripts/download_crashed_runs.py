@@ -77,23 +77,28 @@ def main():
     print("\nSample crashed runs (first 10):")
     for run in crashed_runs[:10]:
         history_len = len(run.history())
-        batch_size = run.config.get("batch_size", "N/A")
+        # Try to extract batch_size from exp_config
+        exp_config = run.config.get("exp_config", {})
+        if isinstance(exp_config, dict):
+            batch_size = exp_config.get("problem", {}).get("dataset", {}).get("batch_size", "N/A")
+        else:
+            batch_size = "N/A"
         print(f"  {run.name}: batch_size={batch_size}, state={run.state}, history={history_len} rows")
-        # Show all config keys to debug
-        if batch_size == "N/A":
-            print(f"    Config keys: {list(run.config.keys())}")
     
     # Filter for crashed runs with batch_size=8
+    print("\nSearching for batch_size=8 in crashed runs...")
     crashed_bs8_runs = []
     for run in runs:
         if run.state == "crashed":
-            # Try different ways to get batch size
-            batch_size = run.config.get("batch_size") or run.config.get("problem", {}).get("dataset", {}).get("batch_size")
-            if batch_size == 8:
-                history_len = len(run.history())
-                if history_len > 0:
-                    crashed_bs8_runs.append(run)
-                    print(f"  Found: {run.name} - {history_len} epochs logged")
+            # Extract batch_size from nested exp_config structure
+            exp_config = run.config.get("exp_config", {})
+            if isinstance(exp_config, dict):
+                batch_size = exp_config.get("problem", {}).get("dataset", {}).get("batch_size")
+                if batch_size == 8:
+                    history_len = len(run.history())
+                    if history_len > 0:
+                        crashed_bs8_runs.append(run)
+                        print(f"  Found: {run.name} - {history_len} epochs logged")
     
     print(f"\nFound {len(crashed_bs8_runs)} crashed batch_size=8 runs with data")
     
