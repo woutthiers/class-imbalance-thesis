@@ -182,10 +182,11 @@ print(f"  - AdaptiveSign configs: {len(opts_adaptive_sign)}")
 print(f"  - Baseline configs: {len(opts_baselines)}")
 
 # SLURM configuration for VSC
-SLURM_CONFIG = slurm_config.VSC_CPU_4H
+SLURM_CONFIG = slurm_config.VSC_CPU_8H  # 8 hours for 50 epochs
 
 # For testing, use shorter time:
 # SLURM_CONFIG = slurm_config.VSC_CPU_1H
+# SLURM_CONFIG = slurm_config.VSC_CPU_4H
 
 if __name__ == "__main__":
     exp_runner_cli(experiments, slurm_config=SLURM_CONFIG)
