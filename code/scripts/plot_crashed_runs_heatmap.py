@@ -39,11 +39,11 @@ def load_crashed_run_metadata(run_id, api):
             lr_base = lr_config.get("base", 10)
             # Handle fraction representation
             if isinstance(lr_exp, dict):
-                num = lr_exp.get("numerator", 0)
-                denom = lr_exp.get("denominator", 1)
-                lr = lr_base ** (num / denom)
+                num = float(lr_exp.get("numerator", 0))
+                denom = float(lr_exp.get("denominator", 1))
+                lr = float(lr_base) ** (num / denom)
             else:
-                lr = lr_base ** lr_exp
+                lr = float(lr_base) ** float(lr_exp)
         else:
             lr = None
         
