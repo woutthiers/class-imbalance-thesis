@@ -286,7 +286,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     
     # Get crashed runs directory
-    crashed_dir = Path(config.get_base_directory()) / "data" / "crashed_runs"
+    crashed_dir = Path(config.get_dataset_directory()) / "data" / "crashed_runs"
     
     if not crashed_dir.exists():
         print(f"ERROR: Crashed runs directory not found: {crashed_dir}")
