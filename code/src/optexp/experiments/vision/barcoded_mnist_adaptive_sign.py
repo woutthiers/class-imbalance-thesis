@@ -71,7 +71,7 @@ USE_FOCUSED_COMPARISON = True  # Set to False to use full grid search
 # Testing if heavy normalization benefits appear in long-term training
 BATCH_SIZES = [1024]  # Only batch size 1024
 NUM_SEEDS = 1
-EPOCHS = 80  # Longer training to see long-term behavior
+EPOCHS = 100  # Longer training to see long-term behavior
 INCLUDE_BASELINES = False  # Using specific configs
 
 # ============================================================================
