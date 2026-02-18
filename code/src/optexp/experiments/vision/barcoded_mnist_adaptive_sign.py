@@ -42,25 +42,37 @@ from optexp.optimizers.learning_rate import LearningRate
 # CONFIGURATION - Adjust these parameters
 # ============================================================================
 
-# Batch sizes to test (will run experiments for each)
-BATCH_SIZES = [64, 256, 1024]  # Four different batch sizes
+# Toggle between full grid search and focused comparison
+USE_FOCUSED_COMPARISON = True  # Set to False to use full grid search
 
-# Learning rate grid - 7 learning rates
-LR_START = -7    # 10^-7
-LR_END = -1      # 10^-1
-LR_DENSITY = 0   # 0=coarse gives 7 points: 10^-7, 10^-6, 10^-5, 10^-4, 10^-3, 10^-2, 10^-1
+# === FULL GRID SEARCH CONFIGURATION ===
+# # Batch sizes to test (will run experiments for each)
+# BATCH_SIZES = [64, 256, 1024]  # Removed batch 8 (too slow)
+# 
+# # Learning rate grid - 7 learning rates
+# LR_START = -7    # 10^-7
+# LR_END = -1      # 10^-1
+# LR_DENSITY = 0   # 0=coarse gives 7 points: 10^-7, 10^-6, 10^-5, 10^-4, 10^-3, 10^-2, 10^-1
+# 
+# # Epsilon values to test - 5 epsilon values
+# EPSILON_VALUES = [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
+# 
+# # Number of seeds (1 for quick exploration, 3 for robustness)
+# NUM_SEEDS = 1
+# 
+# # Training epochs
+# EPOCHS = 20
+# 
+# # Include baseline optimizers (Adam, SGD)
+# INCLUDE_BASELINES = True
 
-# Epsilon values to test - 5 epsilon values
-EPSILON_VALUES = [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
-
-# Number of seeds (1 for quick exploration, 3 for robustness)
+# === FOCUSED COMPARISON CONFIGURATION ===
+# SGD (LR=3e-4) vs AdaptiveSign (eps=1e-8, LR=1e-4)
+# Testing if heavy normalization benefits appear in long-term training
+BATCH_SIZES = [1024]  # Only batch size 1024
 NUM_SEEDS = 1
-
-# Training epochs
-EPOCHS = 20
-
-# Include baseline optimizers (Adam, SGD)
-INCLUDE_BASELINES = True  # Disabled for quick focused comparison
+EPOCHS = 80  # Longer training to see long-term behavior
+INCLUDE_BASELINES = False  # Using specific configs
 
 # ============================================================================
 
@@ -97,26 +109,40 @@ def make_adaptive_sign_grid(epsilon_values, lr_start, lr_end, lr_density):
     return optimizers
 
 
-# Create AdaptiveSign optimizer grid
-opts_adaptive_sign = make_adaptive_sign_grid(
-    epsilon_values=EPSILON_VALUES,
-    lr_start=LR_START,
-    lr_end=LR_END,
-    lr_density=LR_DENSITY,
-)
-
-# Create baseline optimizer grid (optional)
-opts_baselines = []
-if INCLUDE_BASELINES:
-    # Adam baselines (minimal grid: 3 learning rates)
-    for lr in lr_grid(start=-4, end=-2, density=0):
-        opts_baselines.append(Adam_NM(lr))
-        opts_baselines.append(Adam_M(lr))
+# Create optimizer configurations based on mode
+if USE_FOCUSED_COMPARISON:
+    # Focused comparison: SGD vs AdaptiveSign with heavy normalization
+    opts_adaptive_sign = [
+        AdaptiveSign_NM(LearningRate(base=10, exponent=-4), eps=1e-8),  # Heavy normalization
+    ]
+    opts_baselines = [
+        SGD_NM(LearningRate(base=10, exponent=-3.5)),  # 3e-4 = 10^-3.5
+    ]
+else:
+    # Full grid search (commented out configuration above)
+    LR_START = -7
+    LR_END = -1
+    LR_DENSITY = 0
+    EPSILON_VALUES = [1e-8, 1e-6, 1e-4, 1e-2, 1.0]
     
-    # SGD baselines (typically good around 1e-1 to 1.0)
-    for lr in lr_grid(start=-6, end=-1, density=1):
-        opts_baselines.append(SGD_NM(lr))
-        opts_baselines.append(SGD_M(lr))
+    opts_adaptive_sign = make_adaptive_sign_grid(
+        epsilon_values=EPSILON_VALUES,
+        lr_start=LR_START,
+        lr_end=LR_END,
+        lr_density=LR_DENSITY,
+    )
+    
+    opts_baselines = []
+    if INCLUDE_BASELINES:
+        # Adam baselines (minimal grid: 3 learning rates)
+        for lr in lr_grid(start=-4, end=-2, density=0):
+            opts_baselines.append(Adam_NM(lr))
+            opts_baselines.append(Adam_M(lr))
+        
+        # SGD baselines (typically good around 1e-1 to 1.0)
+        for lr in lr_grid(start=-6, end=-1, density=1):
+            opts_baselines.append(SGD_NM(lr))
+            opts_baselines.append(SGD_M(lr))
 
 # Combine all optimizers
 all_optimizers = opts_adaptive_sign + opts_baselines
