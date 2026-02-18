@@ -66,6 +66,11 @@ def load_experiment_data(project, group_name):
         # Get history
         history = run.history()
         
+        # Debug: Print available metrics for first run
+        if len(data) == 0:
+            print(f"\nAvailable metrics in first run:")
+            print([col for col in history.columns if not col.startswith('_')])
+        
         data.append({
             "run_id": run.id,
             "run_name": run.name,
@@ -123,7 +128,7 @@ def find_best_runs_per_optimizer(data, metric="tr_CrossEntropyLoss", epoch=-1):
     return best_runs
 
 
-def plot_overall_loss_comparison(best_runs, metric="tr_CrossEntropyLoss", save_dir=None):
+def plot_overall_loss_comparison(best_runs, metric="tr_CrossEntropyLoss", momentum_variant="", save_dir=None):
     """
     Plot overall loss for all best runs on one figure.
     """
@@ -156,7 +161,10 @@ def plot_overall_loss_comparison(best_runs, metric="tr_CrossEntropyLoss", save_d
     
     ax.set_xlabel("Epoch", fontsize=12)
     ax.set_ylabel(metric, fontsize=12)
-    ax.set_title(f"Best Learning Rate per Optimizer: {metric}", fontsize=14)
+    title = f"Best Learning Rate per Optimizer: {metric}"
+    if momentum_variant:
+        title += f" ({momentum_variant})"
+    ax.set_title(title, fontsize=14)
     ax.legend(fontsize=9, loc='best')
     ax.grid(True, alpha=0.3)
     ax.set_yscale('log')
@@ -166,14 +174,15 @@ def plot_overall_loss_comparison(best_runs, metric="tr_CrossEntropyLoss", save_d
     if save_dir:
         save_dir = Path(save_dir)
         save_dir.mkdir(parents=True, exist_ok=True)
-        filepath = save_dir / f"overall_comparison_{metric}.png"
+        suffix = f"_{momentum_variant}" if momentum_variant else ""
+        filepath = save_dir / f"overall_comparison_{metric}{suffix}.png"
         plt.savefig(filepath, dpi=150, bbox_inches='tight')
         print(f"Saved: {filepath}")
     
     plt.close(fig)
 
 
-def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossByFrequencyTier", save_dir=None):
+def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossByFrequencyTier", momentum_variant="", save_dir=None):
     """
     For each optimizer's best run, create a separate plot showing all 7 tier losses.
     """
@@ -197,6 +206,10 @@ def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossBy
         # Check if tier metric exists
         if tier_metric not in history.columns:
             print(f"Warning: {tier_metric} not found for {key}")
+            # Show available tier-related metrics
+            tier_cols = [col for col in history.columns if 'Tier' in col or 'tier' in col]
+            if tier_cols:
+                print(f"  Available tier metrics: {tier_cols}")
             continue
         
         fig, ax = plt.subplots(figsize=(12, 7))
@@ -229,6 +242,9 @@ def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossBy
         else:
             title = f"{opt} (LR={lr:.0e}, BS={batch_size}): Loss per Tier"
         
+        if momentum_variant:
+            title += f" ({momentum_variant})"
+        
         ax.set_xlabel("Epoch", fontsize=12)
         ax.set_ylabel(tier_metric, fontsize=12)
         ax.set_title(title, fontsize=14)
@@ -244,7 +260,8 @@ def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossBy
             
             # Sanitize filename
             filename = key.replace(".", "p").replace(" ", "_")
-            filepath = save_dir / f"tier_losses_{filename}.png"
+            suffix = f"_{momentum_variant}" if momentum_variant else ""
+            filepath = save_dir / f"tier_losses_{filename}{suffix}.png"
             plt.savefig(filepath, dpi=150, bbox_inches='tight')
             print(f"Saved: {filepath}")
         
@@ -307,22 +324,48 @@ def main():
         data = [d for d in data if d["batch_size"] == args.batch_size]
         print(f"Filtered to {len(data)} runs with batch_size={args.batch_size}")
     
-    # Find best runs per optimizer
-    print(f"\nFinding best runs per optimizer (based on {args.metric})...")
-    best_runs = find_best_runs_per_optimizer(data, metric=args.metric, epoch=-1)
-    print(f"Found {len(best_runs)} optimizer variants")
+    # Split data by momentum
+    data_with_momentum = [d for d in data if d["momentum"] > 0]
+    data_no_momentum = [d for d in data if d["momentum"] == 0]
+    
+    print(f"\nRuns with momentum: {len(data_with_momentum)}")
+    print(f"Runs without momentum: {len(data_no_momentum)}")
     
     # Create save directory
     save_dir = Path(config.get_plots_directory()) / "AdaptiveSign_Synthetic_Linear"
     save_dir.mkdir(parents=True, exist_ok=True)
     
-    # Plot overall comparison
-    print("\nCreating overall loss comparison plot...")
-    plot_overall_loss_comparison(best_runs, metric=args.metric, save_dir=save_dir)
+    # Process with momentum
+    if len(data_with_momentum) > 0:
+        print("\n" + "="*70)
+        print("Processing runs WITH momentum")
+        print("="*70)
+        
+        print(f"Finding best runs per optimizer (based on {args.metric})...")
+        best_runs_M = find_best_runs_per_optimizer(data_with_momentum, metric=args.metric, epoch=-1)
+        print(f"Found {len(best_runs_M)} optimizer variants")
+        
+        print("Creating overall loss comparison plot...")
+        plot_overall_loss_comparison(best_runs_M, metric=args.metric, momentum_variant="With_Momentum", save_dir=save_dir)
+        
+        print("Creating per-optimizer tier loss plots...")
+        plot_tier_losses_per_optimizer(best_runs_M, tier_metric=args.tier_metric, momentum_variant="With_Momentum", save_dir=save_dir)
     
-    # Plot tier losses per optimizer
-    print("\nCreating per-optimizer tier loss plots...")
-    plot_tier_losses_per_optimizer(best_runs, tier_metric=args.tier_metric, save_dir=save_dir)
+    # Process without momentum
+    if len(data_no_momentum) > 0:
+        print("\n" + "="*70)
+        print("Processing runs WITHOUT momentum")
+        print("="*70)
+        
+        print(f"Finding best runs per optimizer (based on {args.metric})...")
+        best_runs_NM = find_best_runs_per_optimizer(data_no_momentum, metric=args.metric, epoch=-1)
+        print(f"Found {len(best_runs_NM)} optimizer variants")
+        
+        print("Creating overall loss comparison plot...")
+        plot_overall_loss_comparison(best_runs_NM, metric=args.metric, momentum_variant="No_Momentum", save_dir=save_dir)
+        
+        print("Creating per-optimizer tier loss plots...")
+        plot_tier_losses_per_optimizer(best_runs_NM, tier_metric=args.tier_metric, momentum_variant="No_Momentum", save_dir=save_dir)
     
     print("\n" + "="*70)
     print("Done!")
