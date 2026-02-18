@@ -37,10 +37,16 @@ def load_crashed_run_metadata(run_id, api):
         if isinstance(lr_config, dict):
             lr_exp = lr_config.get("exponent", 0)
             lr_base = lr_config.get("base", 10)
-            # Handle fraction representation
+            # Handle fraction representation (dict, string, or number)
             if isinstance(lr_exp, dict):
                 num = float(lr_exp.get("numerator", 0))
                 denom = float(lr_exp.get("denominator", 1))
+                lr = float(lr_base) ** (num / denom)
+            elif isinstance(lr_exp, str) and '/' in lr_exp:
+                # Handle string fractions like '-7/2'
+                parts = lr_exp.split('/')
+                num = float(parts[0])
+                denom = float(parts[1])
                 lr = float(lr_base) ** (num / denom)
             else:
                 lr = float(lr_base) ** float(lr_exp)
