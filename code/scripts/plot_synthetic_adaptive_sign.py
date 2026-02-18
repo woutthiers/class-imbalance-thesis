@@ -203,8 +203,14 @@ def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossBy
         run_data = best_run_info["run_data"]
         history = run_data["history"]
         
-        # Check if tier metric exists
-        if tier_metric not in history.columns:
+        # Find metric column (may have string representation appended)
+        metric_col = None
+        for col in history.columns:
+            if col.startswith(tier_metric):
+                metric_col = col
+                break
+        
+        if metric_col is None:
             print(f"Warning: {tier_metric} not found for {key}")
             # Show available tier-related metrics
             tier_cols = [col for col in history.columns if 'Tier' in col or 'tier' in col]
@@ -220,7 +226,7 @@ def plot_tier_losses_per_optimizer(best_runs, tier_metric="tr_CrossEntropyLossBy
         for tier_idx in range(num_tiers):
             # Extract tier values from the list
             tier_values = []
-            for val in history[tier_metric].values:
+            for val in history[metric_col].values:
                 if isinstance(val, (list, np.ndarray)) and len(val) > tier_idx:
                     tier_values.append(val[tier_idx])
                 else:
